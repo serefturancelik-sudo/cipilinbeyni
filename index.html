@@ -1,0 +1,259 @@
+```html
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebOS - Windows Mimic</title>
+    <style>
+        /* Temel Değişkenler ve Sıfırlama */
+        :root {
+            --taskbar-bg: rgba(20, 20, 20, 0.85);
+            --win-bg: rgba(243, 243, 243, 0.95);
+            --accent-color: #0078d4;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+
+        body, html {
+            height: 100%;
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        /* Masaüstü Arka Planı */
+        #desktop {
+            width: 100vw;
+            height: 100vh;
+            background: url('https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1920&q=80') center/cover no-repeat;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Görev Çubuğu */
+        #taskbar {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 48px;
+            background: var(--taskbar-bg);
+            backdrop-filter: blur(15px);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 10px;
+            z-index: 1000;
+            color: white;
+        }
+
+        .taskbar-left { display: flex; align-items: center; gap: 5px; }
+
+        .start-btn {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .start-btn:hover { background: rgba(255, 255, 255, 0.1); }
+
+        /* Başlat Menüsü */
+        #start-menu {
+            position: absolute;
+            bottom: 55px;
+            left: 10px;
+            width: 400px;
+            height: 500px;
+            background: var(--taskbar-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            display: none;
+            flex-direction: column;
+            padding: 20px;
+            color: white;
+            z-index: 999;
+        }
+
+        #start-menu.active { display: flex; }
+
+        /* Pencere Sistemi */
+        .window {
+            position: absolute;
+            top: 100px;
+            left: 100px;
+            width: 600px;
+            height: 400px;
+            background: var(--win-bg);
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+            z-index: 10;
+        }
+
+        .window-header {
+            height: 35px;
+            background: #fff;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 10px;
+            cursor: move;
+        }
+
+        .window-controls { display: flex; gap: 5px; }
+
+        .control-btn {
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+        .close-btn:hover { background: #e81123; color: white; }
+
+        .window-content {
+            padding: 20px;
+            flex-grow: 1;
+            background: white;
+        }
+
+        /* Saat Alanı */
+        #systray {
+            font-size: 12px;
+            text-align: right;
+            padding-right: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="desktop">
+        <!-- Uygulama Simgeleri -->
+        <div style="padding: 20px;">
+            <div onclick="toggleWindow('win-browser')" style="text-align:center; width:80px; color:white; cursor:pointer;">
+                <img src="https://cdn-icons-png.flaticon.com/512/888/888846.png" width="50"><br>
+                <span>Tarayıcı</span>
+            </div>
+        </div>
+
+        <!-- Örnek Pencere (Browser) -->
+        <div id="win-browser" class="window">
+            <div class="window-header">
+                <span>Microsoft Edge (Replica)</span>
+                <div class="window-controls">
+                    <div class="control-btn" onclick="toggleWindow('win-browser')">─</div>
+                    <div class="control-btn close-btn" onclick="toggleWindow('win-browser')">✕</div>
+                </div>
+            </div>
+            <div class="window-content">
+                <iframe src="https://www.bing.com" style="width:100%; height:100%; border:none;"></iframe>
+            </div>
+        </div>
+
+        <!-- Başlat Menüsü -->
+        <div id="start-menu">
+            <h3>Sabitlenenler</h3>
+            <div style="margin-top:20px; display:grid; grid-template-columns: repeat(3, 1fr); gap:15px;">
+                <p>Ayarlar</p>
+                <p>Belgeler</p>
+                <p>Resimler</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Görev Çubuğu -->
+    <div id="taskbar">
+        <div class="taskbar-left">
+            <div class="start-btn" id="start-trigger">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/3/34/Windows_logo_2012.svg" width="20">
+            </div>
+        </div>
+        
+        <div id="systray">
+            <div id="clock-time"></div>
+            <div id="clock-date"></div>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elementleri
+        const startBtn = document.getElementById('start-trigger');
+        const startMenu = document.getElementById('start-menu');
+        const clockTime = document.getElementById('clock-time');
+        const clockDate = document.getElementById('clock-date');
+
+        // Başlat Menüsü Toggle
+        startBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            startMenu.classList.toggle('active');
+        });
+
+        // Masaüstüne tıklandığında menüleri kapat
+        document.addEventListener('click', () => {
+            startMenu.classList.remove('active');
+        });
+
+        // Pencere Yönetimi
+        function toggleWindow(id) {
+            const win = document.getElementById(id);
+            if (win.style.display === 'flex') {
+                win.style.display = 'none';
+            } else {
+                win.style.display = 'flex';
+                // En üste getir
+                win.style.zIndex = Math.floor(Date.now() / 1000);
+            }
+        }
+
+        // Saat ve Tarih Fonksiyonu
+        function updateClock() {
+            const now = new Date();
+            clockTime.innerText = now.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+            clockDate.innerText = now.toLocaleDateString('tr-TR');
+        }
+
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // Basit Sürükleme Mantığı (Basitleştirilmiş)
+        const windows = document.querySelectorAll('.window-header');
+        windows.forEach(header => {
+            let isDragging = false;
+            let offset = { x: 0, y: 0 };
+
+            header.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                const win = header.parentElement;
+                offset.x = e.clientX - win.offsetLeft;
+                offset.y = e.clientY - win.offsetTop;
+                win.style.zIndex = 100;
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                const win = header.parentElement;
+                win.style.left = (e.clientX - offset.x) + 'px';
+                win.style.top = (e.clientY - offset.y) + 'px';
+            });
+
+            document.addEventListener('mouseup', () => {
+                isDragging = false;
+            });
+        });
+    </script>
+</body>
+</html>
+```
