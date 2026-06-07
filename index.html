@@ -1,1 +1,134 @@
-print("hello word")
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OmniCreative AI Studio - Yaratıcı Atölye</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        .glass-panel { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); }
+        body { font-family: 'Inter', sans-serif; background-color: #0f1117; color: #f1f5f9; }
+        pre { font-family: 'Fira Code', monospace; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+    </style>
+</head>
+<body class="min-h-screen flex text-slate-300">
+
+    <!-- Sidebar -->
+    <aside class="w-72 bg-[#1a1c24] border-r border-slate-800 p-6 flex flex-col shadow-xl">
+        <h1 class="font-extrabold text-xl text-white mb-10 tracking-tight flex items-center gap-2">
+            <i class="fas fa-robot text-cyan-400"></i> OmniCreative AI
+        </h1>
+        
+        <nav class="space-y-3 flex-1">
+            <div class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Stüdyolar</div>
+            <button onclick="showPanel('yaratıcı')" class="w-full text-left px-4 py-2.5 rounded-lg bg-slate-800/50 text-white font-medium hover:bg-slate-700 transition"><i class="fas fa-palette mr-2 text-indigo-400"></i> Yaratıcı Panel</button>
+            <button class="w-full text-left px-4 py-2.5 rounded-lg hover:bg-slate-800 text-slate-400 transition"><i class="fas fa-camera mr-2 text-rose-400"></i> Fotoğraf Stüdyosu</button>
+            <button class="w-full text-left px-4 py-2.5 rounded-lg hover:bg-slate-800 text-slate-400 transition"><i class="fas fa-video mr-2 text-amber-400"></i> Video Stüdyosu</button>
+            <button onclick="showPanel('kod')" class="w-full text-left px-4 py-2.5 rounded-lg bg-cyan-900/20 text-cyan-400 font-medium hover:bg-cyan-900/30 transition"><i class="fas fa-code mr-2"></i> Kod Laboratuvarı</button>
+        </nav>
+
+        <div class="mt-auto pt-6 border-t border-slate-800">
+            <div class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">API Anahtarı</div>
+            <input type="password" id="api-key-input" placeholder="API Anahtarınız" class="w-full bg-[#0f1117] border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-cyan-500">
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 p-8 overflow-y-auto">
+        
+        <!-- Kod Laboratuvarı Paneli -->
+        <section id="panel-kod" class="tab-content active max-w-4xl mx-auto">
+            <h2 class="text-2xl font-bold mb-6 text-white tracking-tight">Kod Laboratuvarı</h2>
+            
+            <div class="bg-[#1a1c24] p-6 rounded-2xl border border-slate-800 shadow-2xl">
+                <textarea id="prompt-input" class="w-full h-32 bg-[#0f1117] p-4 rounded-xl border border-slate-700 text-white font-mono text-sm focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition" placeholder="Ne kodlamamı veya açıklamamı istersiniz?"></textarea>
+                
+                <div class="flex gap-3 mt-4">
+                    <button onclick="handleGeminiAction('code')" class="bg-indigo-600 text-white px-6 py-2.5 rounded-lg font-bold hover:bg-indigo-500 transition shadow-lg shadow-indigo-900/20">Kod Yaz</button>
+                    <button onclick="handleGeminiAction('explain')" class="bg-emerald-600 text-white px-6 py-2.5 rounded-lg font-bold hover:bg-emerald-500 transition shadow-lg shadow-emerald-900/20 flex items-center gap-2">
+                        <i class="fas fa-magic"></i> Kodu Açıkla
+                    </button>
+                </div>
+
+                <div id="output-area" class="mt-8 bg-[#0f1117] p-6 rounded-xl border border-slate-800 min-h-[200px] hidden">
+                    <div id="loading-spinner" class="hidden text-center text-cyan-400 font-medium py-10">
+                        <i class="fas fa-spinner fa-spin mr-2"></i> Gemini düşünüyor...
+                    </div>
+                    <pre id="result-content" class="text-slate-300 text-sm whitespace-pre-wrap font-mono leading-relaxed"></pre>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        function showPanel(panel) {
+            document.querySelectorAll('.tab-content').forEach(p => p.classList.remove('active'));
+            document.getElementById('panel-' + panel).classList.add('active');
+        }
+
+        async function handleGeminiAction(action) {
+            const prompt = document.getElementById('prompt-input').value;
+            const outputArea = document.getElementById('output-area');
+            const resultContent = document.getElementById('result-content');
+            const loader = document.getElementById('loading-spinner');
+            
+            if(!prompt) {
+                alert("Lütfen bir komut girin.");
+                return;
+            }
+
+            // UI Setup
+            outputArea.classList.remove('hidden');
+            loader.classList.remove('hidden');
+            resultContent.classList.add('hidden');
+            
+            // Instruction
+            const systemInstruction = action === 'code' 
+                ? "Sen uzman bir yazılım geliştiricisisin. Sadece temiz, yorumlanmış ve hatasız kod blokları yaz. Kodun başına açıklama ekleme, sadece kodu ver."
+                : "Sen uzman bir eğitmen ve yazılım geliştiricisisin. Sana verilen kod bloklarını veya teknik kavramları yeni başlayan biri için basit, net ve öğretici bir dille açıkla.";
+
+            try {
+                const response = await callGeminiAPI(prompt, systemInstruction);
+                resultContent.textContent = response;
+                loader.classList.add('hidden');
+                resultContent.classList.remove('hidden');
+            } catch (err) {
+                resultContent.textContent = "Hata: " + err.message;
+                loader.classList.add('hidden');
+                resultContent.classList.remove('hidden');
+            }
+        }
+
+        async function callGeminiAPI(userQuery, systemInstruction) {
+            // API key logic
+            const apiKey = document.getElementById('api-key-input').value || ""; 
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+
+            const payload = {
+                contents: [{ parts: [{ text: userQuery }] }],
+                systemInstruction: {
+                    parts: [{ text: systemInstruction }]
+                }
+            };
+
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const result = await response.json();
+            
+            if (result.error) {
+                throw new Error(result.error.message);
+            }
+
+            return result.candidates?.[0]?.content?.parts?.[0]?.text || "Yanıt alınamadı.";
+        }
+    </script>
+</body>
+</html>
